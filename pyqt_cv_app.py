@@ -7,6 +7,17 @@ from PyQt5.QtCore import pyqtSignal, pyqtSlot, Qt, QThread
 import numpy as np
 
 
+import numpy as np
+from PIL import ImageGrab
+import win32gui
+import cv2
+import time
+
+def nearest_ind(items, pivot):
+    time_diff = np.abs([date - pivot for date in items])
+    return time_diff.argmin(0)
+
+
 class VideoThread(QThread):
     change_pixmap_signal = pyqtSignal(np.ndarray)
 
@@ -14,19 +25,67 @@ class VideoThread(QThread):
         super().__init__()
         self._run_flag = True
 
+        windows_list = []
+        toplist = []
+        def enum_win(hwnd, result):
+            win_text = win32gui.GetWindowText(hwnd)
+            windows_list.append((hwnd, win_text))
+        win32gui.EnumWindows(enum_win, toplist)
+
+
+        # Game handle
+        game_hwnd = 0
+        for (hwnd, win_text) in windows_list:
+            if "Camera" in win_text:
+                game_hwnd = hwnd
+
+        self.position = win32gui.GetWindowRect(game_hwnd)
+
+        self.DELAY_SECONDS = 2
+
+        self.frames = []
+        self.times = []
+
+
     def run(self):
         # capture from web cam
-        cap = cv2.VideoCapture(0)
+        # cap = cv2.VideoCapture(0)
         while self._run_flag:
-            ret, cv_img = cap.read()
-            if ret:
-                self.change_pixmap_signal.emit(cv_img)
+
+            screenshot = ImageGrab.grab(self.position)
+            screenshot = np.array(screenshot)
+            # print(screenshot.shape)
+            screenshot = cv2.cvtColor(screenshot, cv2.COLOR_RGB2BGR)
+
+            screenshot_time = time.time()
+
+            self.frames.append(screenshot)
+            self.times.append(screenshot_time)
+
+            target_time = screenshot_time - self.DELAY_SECONDS
+
+            target_time_idx = nearest_ind(self.times, target_time )
+
+            # print(target_time_idx)
+
+            display_screnshot = self.frames[target_time_idx]
+
+            self.frames = self.frames[target_time_idx:]
+            self.times = self.times[target_time_idx:]
+
+
+            self.change_pixmap_signal.emit(display_screnshot)
+
+            # ret, cv_img = cap.read()
+            # if ret:
+            #     self.change_pixmap_signal.emit(cv_img)
         # shut down capture system
-        cap.release()
+        cv2.destroyAllWindows()
 
     def stop(self):
         """Sets run flag to False and waits for thread to finish"""
         self._run_flag = False
+        
         self.wait()
 
 
@@ -41,6 +100,13 @@ class App(QWidget):
         self.image_label.resize(self.disply_width, self.display_height)
         # create a text label
         self.textLabel = QLabel('Webcam')
+
+        # create the video capture thread
+        self.thread = VideoThread()
+        # connect its signal to the update_image slot
+        self.thread.change_pixmap_signal.connect(self.update_image)
+        # start the thread
+        self.thread.start()
 
 
         self.time_display = QLineEdit()
@@ -63,15 +129,11 @@ class App(QWidget):
         # set the vbox layout as the widgets layout
         self.setLayout(vbox)
 
-        # create the video capture thread
-        self.thread = VideoThread()
-        # connect its signal to the update_image slot
-        self.thread.change_pixmap_signal.connect(self.update_image)
-        # start the thread
-        self.thread.start()
+
 
     def delaychanged(self):
         self.time_display.setText(str(self.slider.value()))
+        self.thread.DELAY_SECONDS = self.slider.value()/1000
 
 
     def closeEvent(self, event):
