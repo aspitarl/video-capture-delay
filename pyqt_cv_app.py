@@ -36,7 +36,7 @@ class VideoThread(QThread):
         # Game handle
         game_hwnd = 0
         for (hwnd, win_text) in windows_list:
-            if "Camera" in win_text:
+            if "Skype" in win_text:
                 game_hwnd = hwnd
 
         self.position = win32gui.GetWindowRect(game_hwnd)
@@ -112,7 +112,7 @@ class App(QWidget):
         self.time_display = QLineEdit()
 
         self.slider = QSlider(Qt.Horizontal)
-        self.slider.setMaximum(5000)
+        self.slider.setMaximum(15000)
         self.slider.setValue(1000)
         self.delaychanged()
         self.slider.sliderReleased.connect(self.delaychanged)
