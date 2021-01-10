@@ -21,7 +21,7 @@ def nearest_ind(items, pivot):
 class VideoThread(QThread):
     change_pixmap_signal = pyqtSignal(np.ndarray)
 
-    def __init__(self):
+    def __init__(self, window_search_string):
         super().__init__()
         self._run_flag = True
 
@@ -34,10 +34,15 @@ class VideoThread(QThread):
 
 
         # Game handle
-        game_hwnd = 0
+        game_hwnd = None
         for (hwnd, win_text) in windows_list:
-            if "Skype" in win_text:
+            if window_search_string in win_text:
                 game_hwnd = hwnd
+        
+        
+        if game_hwnd == None:
+            window_list_strs = [t[1] for t in windows_list if len(t[1]) > 0]
+            raise ValueError('Could not find ' + window_search_string + " In "+ str(window_list_strs))
 
         self.position = win32gui.GetWindowRect(game_hwnd)
 
@@ -90,7 +95,7 @@ class VideoThread(QThread):
 
 
 class App(QWidget):
-    def __init__(self):
+    def __init__(self, window_search_string):
         super().__init__()
         self.setWindowTitle("Qt live label demo")
         self.disply_width = 640
@@ -102,7 +107,7 @@ class App(QWidget):
         self.textLabel = QLabel('Webcam')
 
         # create the video capture thread
-        self.thread = VideoThread()
+        self.thread = VideoThread(window_search_string)
         # connect its signal to the update_image slot
         self.thread.change_pixmap_signal.connect(self.update_image)
         # start the thread
@@ -155,8 +160,19 @@ class App(QWidget):
         p = convert_to_Qt_format.scaled(self.disply_width, self.display_height, Qt.KeepAspectRatio)
         return QPixmap.fromImage(p)
     
+import argparse
+
 if __name__=="__main__":
+
+    
+
+    parser = argparse.ArgumentParser(description='Window Capture.')
+    parser.add_argument('string', type=str)
+
+    args = parser.parse_args()
+    window_search_string = args.string
+
     app = QApplication(sys.argv)
-    a = App()
+    a = App(window_search_string)
     a.show()
     sys.exit(app.exec_())
