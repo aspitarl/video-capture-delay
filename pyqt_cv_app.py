@@ -98,8 +98,8 @@ class App(QWidget):
     def __init__(self, window_search_string):
         super().__init__()
         self.setWindowTitle("Qt live label demo")
-        self.disply_width = 640
-        self.display_height = 480
+        self.disply_width = 400
+        self.display_height = 300
         # create the label that holds the image
         self.image_label = QLabel(self)
         self.image_label.resize(self.disply_width, self.display_height)
@@ -121,20 +121,43 @@ class App(QWidget):
         self.slider.setValue(1000)
         self.delaychanged()
         self.slider.sliderReleased.connect(self.delaychanged)
+
+        self.slider_winleft = QSlider(Qt.Horizontal)
+        self.slider_winleft.sliderReleased.connect(self.change_window_size)
+        self.slider_winleft.setMinimum(0)
+        self.slider_winleft.setMaximum(self.display_height)
+        self.slider_winright = QSlider(Qt.Horizontal)
+        self.slider_winright.sliderReleased.connect(self.change_window_size)
+        self.slider_winright.setMinimum(0)
+        self.slider_winright.setMaximum(self.display_height)
+        self.slider_wintop = QSlider(Qt.Horizontal)
+        self.slider_wintop.sliderReleased.connect(self.change_window_size)
+        self.slider_winbottom = QSlider(Qt.Horizontal)
+        self.slider_winbottom.sliderReleased.connect(self.change_window_size)
         
+        window_slider_layout = QHBoxLayout()
+        window_slider_layout.addWidget(self.slider_winleft)
+        window_slider_layout.addWidget(self.slider_winright)
+        window_slider_layout.addWidget(self.slider_wintop)
+        window_slider_layout.addWidget(self.slider_winbottom)
+
         hbox = QHBoxLayout()
         hbox.addWidget(self.slider)
+        
         hbox.addWidget(self.time_display)
 
         # create a vertical box layout and add the two labels
         vbox = QVBoxLayout()
         vbox.addWidget(self.image_label)
         vbox.addWidget(self.textLabel)
+        vbox.addLayout(window_slider_layout)
         vbox.addLayout(hbox)
         # set the vbox layout as the widgets layout
         self.setLayout(vbox)
 
-
+    def change_window_size(self):
+        print(self.slider_winright.value)
+        pass
 
     def delaychanged(self):
         self.time_display.setText(str(self.slider.value()))
