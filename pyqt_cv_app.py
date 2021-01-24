@@ -32,24 +32,41 @@ class VideoThread(QThread):
             windows_list.append((hwnd, win_text))
         win32gui.EnumWindows(enum_win, toplist)
 
-
         # Game handle
-        game_hwnd = None
+        self.game_hwnd = None
         for (hwnd, win_text) in windows_list:
             if window_search_string in win_text:
-                game_hwnd = hwnd
+                self.game_hwnd = hwnd
         
-        
-        if game_hwnd == None:
+        if self.game_hwnd == None:
             window_list_strs = [t[1] for t in windows_list if len(t[1]) > 0]
             raise ValueError('Could not find ' + window_search_string + " In "+ str(window_list_strs))
 
-        self.position = win32gui.GetWindowRect(game_hwnd)
+        self.set_position()
 
         self.DELAY_SECONDS = 2
 
         self.frames = []
         self.times = []
+
+    def set_position(self, buffers=[0,0,0,0]):
+        """Buffers is list of [left, top, right, bottom] (same as GetWindowRect) from 0 to 1"""
+
+        full_position = win32gui.GetWindowRect(self.game_hwnd)
+
+        left = full_position[0]
+        top = full_position[1]
+        right = full_position[2]
+        bottom = full_position[3]
+        width = right-left
+        height = top - bottom
+
+        left_t = left + width*buffers[0]
+        top_t = top - height*buffers[1]
+        right_t = right - width*buffers[2]
+        bottom_t = bottom + height*buffers[3]
+
+        self.position = [left_t, top_t, right_t, bottom_t]
 
 
     def run(self):
@@ -59,7 +76,7 @@ class VideoThread(QThread):
 
             screenshot = ImageGrab.grab(self.position)
             screenshot = np.array(screenshot)
-            # print(screenshot.shape)
+
             screenshot = cv2.cvtColor(screenshot, cv2.COLOR_RGB2BGR)
 
             screenshot_time = time.time()
@@ -70,8 +87,6 @@ class VideoThread(QThread):
             target_time = screenshot_time - self.DELAY_SECONDS
 
             target_time_idx = nearest_ind(self.times, target_time )
-
-            # print(target_time_idx)
 
             display_screnshot = self.frames[target_time_idx]
 
@@ -97,12 +112,12 @@ class VideoThread(QThread):
 class App(QWidget):
     def __init__(self, window_search_string):
         super().__init__()
-        self.setWindowTitle("Qt live label demo")
-        self.disply_width = 400
+        self.setWindowTitle("Video Capture Delay")
+        self.display_width = 400
         self.display_height = 300
         # create the label that holds the image
         self.image_label = QLabel(self)
-        self.image_label.resize(self.disply_width, self.display_height)
+        self.image_label.resize(self.display_width, self.display_height)
         # create a text label
         self.textLabel = QLabel('Webcam')
 
@@ -122,15 +137,17 @@ class App(QWidget):
         self.delaychanged()
         self.slider.sliderReleased.connect(self.delaychanged)
 
-        self.slider_winleft = QSlider(Qt.Horizontal)
-        self.slider_winleft.sliderReleased.connect(self.change_window_size)
-        self.slider_winleft.setMinimum(0)
-        self.slider_winleft.setMaximum(self.display_width)
-
-        
+        self.window_buffer_sliders = []
         window_slider_layout = QHBoxLayout()
-        window_slider_layout.addWidget(self.slider_winleft)
 
+        for i in range(4):
+            window_buffer_slider = QSlider(Qt.Horizontal)
+            window_buffer_slider.sliderReleased.connect(self.change_window_size)
+            window_buffer_slider.setMinimum(0)
+            window_buffer_slider.setMaximum(99)
+            window_slider_layout.addWidget(window_buffer_slider)
+            self.window_buffer_sliders.append(window_buffer_slider)
+           
         hbox = QHBoxLayout()
         hbox.addWidget(self.slider)
         
@@ -146,10 +163,15 @@ class App(QWidget):
         self.setLayout(vbox)
 
     def change_window_size(self):
-        print(self.slider_winleft.value())
-        pass
+        buffers = []
+        for slider in self.window_buffer_sliders:
+            slider_val =slider.value()/100.0
+            buffers.append(slider_val)
+        
+        self.thread.set_position(buffers)
 
     def delaychanged(self):
+
         self.time_display.setText(str(self.slider.value()))
         self.thread.DELAY_SECONDS = self.slider.value()/1000
 
@@ -170,7 +192,7 @@ class App(QWidget):
         h, w, ch = rgb_image.shape
         bytes_per_line = ch * w
         convert_to_Qt_format = QtGui.QImage(rgb_image.data, w, h, bytes_per_line, QtGui.QImage.Format_RGB888)
-        p = convert_to_Qt_format.scaled(self.disply_width, self.display_height, Qt.KeepAspectRatio)
+        p = convert_to_Qt_format.scaled(self.display_width, self.display_height, Qt.KeepAspectRatio)
         return QPixmap.fromImage(p)
     
 import argparse
