@@ -125,21 +125,11 @@ class App(QWidget):
         self.slider_winleft = QSlider(Qt.Horizontal)
         self.slider_winleft.sliderReleased.connect(self.change_window_size)
         self.slider_winleft.setMinimum(0)
-        self.slider_winleft.setMaximum(self.display_height)
-        self.slider_winright = QSlider(Qt.Horizontal)
-        self.slider_winright.sliderReleased.connect(self.change_window_size)
-        self.slider_winright.setMinimum(0)
-        self.slider_winright.setMaximum(self.display_height)
-        self.slider_wintop = QSlider(Qt.Horizontal)
-        self.slider_wintop.sliderReleased.connect(self.change_window_size)
-        self.slider_winbottom = QSlider(Qt.Horizontal)
-        self.slider_winbottom.sliderReleased.connect(self.change_window_size)
+        self.slider_winleft.setMaximum(self.display_width)
+
         
         window_slider_layout = QHBoxLayout()
         window_slider_layout.addWidget(self.slider_winleft)
-        window_slider_layout.addWidget(self.slider_winright)
-        window_slider_layout.addWidget(self.slider_wintop)
-        window_slider_layout.addWidget(self.slider_winbottom)
 
         hbox = QHBoxLayout()
         hbox.addWidget(self.slider)
@@ -156,7 +146,7 @@ class App(QWidget):
         self.setLayout(vbox)
 
     def change_window_size(self):
-        print(self.slider_winright.value)
+        print(self.slider_winleft.value())
         pass
 
     def delaychanged(self):
